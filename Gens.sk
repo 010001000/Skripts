@@ -1,3 +1,5 @@
+# created 010001000
+
 on skript start:
 	loop {gens::*}:
 		startGen(loop-value, {gens::%loop-value%::itemtype}, {gens::%loop-value%::droptime})
