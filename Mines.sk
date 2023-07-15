@@ -1,5 +1,4 @@
-# created by devrse
-# don't make this your own skript
+# created 010001000
 
 on skript stop:
 	delete {loc1::*}
