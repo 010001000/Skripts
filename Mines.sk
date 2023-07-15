@@ -1,0 +1,165 @@
+# created by devrse
+# don't make this your own skript
+
+on skript stop:
+	delete {loc1::*}
+	delete {loc2::*}
+	
+on skript start:
+	loop {mines::*}:
+		setupMine(loop-value)
+		startMine(loop-value, {mines::%loop-value%::timer})
+	
+on tab complete of "/minemanager":
+	if player has permission "bukkit.minemanager":
+		set tab completion of position 1 to "pos1", "pos2", "create", "remove", "list", "blocklist", "edit", "start" and "stop" 
+		if tab arg-1 = "create", "remove", "stop" or "blocklist":
+			set tab completion of position 2 to "##name"
+		else if tab arg-1 = "edit":
+			set tab completion of position 2 to "##name"
+			set tab completion of position 3 to "addblock", "removeblock", "newloc" and "setup"
+		else if tab arg-1 = "start":
+			set tab completion of position 2 to "##name"
+			set tab completion of position 3 to "##number"
+
+command /minemanager [<text>] [<text>] [<text>] [<text>]:
+	trigger:
+		if player has permission "bukkit.minemanager":
+			if arg-1 is not set:
+				minemanagerhelp(player)
+			if arg-1 = "pos1":
+				set {loc1::%player%} to player's location
+				message "Pos1 set. x: %x-coord of {loc1::%player%}%, y: %y-coord of {loc1::%player%}%, z: %z-coord of {loc1::%player%}%"
+			else if arg-1 = "pos2":
+				set {loc2::%player%} to player's location
+				message "Pos2 set. x: %x-coord of {loc2::%player%}%, y: %y-coord of {loc2::%player%}%, z: %z-coord of {loc2::%player%}%"
+					
+			else if arg-1 = "start":
+				if arg-2 and arg-3 is set:
+					if arg-3 matches "[0-9]+":
+						set {_} to arg-3 parsed as number
+						if checkMineContains(arg-2) = true:
+							if {mines::%arg-2%::timer} is not set:
+								message "Mine %arg-2% has started."
+								set {mines::%arg-2%::timer} to {_}
+								startMine(arg-2, {_})
+							
+			else if arg-1 = "stop":
+				if arg-2 is set:
+					if checkMineContains(arg-2) = true:
+						message "Mine %arg-2% has been stopped."
+						delete {mines::%arg-2%::timer}
+				
+			else if arg-1 = "create":
+				if arg-2 is set:
+					if {loc1::%player%} and {loc2::%player%} is set:
+						if checkMineContains(arg-2) = false:
+							message "Created."
+							add arg-2 to {mines::*}
+							create bound with id arg-2 between {loc1::%player%} and {loc2::%player%}
+							
+							delete {loc1::%player%}
+							delete {loc2::%player%}
+						
+			else if arg-1 = "remove":
+				if arg-2 is set:
+					if checkMineContains(arg-2) = true:
+						message "Removed."
+						remove arg-2 from {mines::*}
+						delete {mines::%arg-2%::blocks::*}
+						delete bound with id arg-2
+			
+			else if arg-1 = "list":
+				if {mines::*} is not set:
+					message "&cNo avaliable mines."
+				else if {mines::*} is set:
+					message "Avaliable Mines:"
+					loop {mines::*}:
+						if {mines::%loop-value%::timer} is set:
+							set {_n} to ": Reset Timer[%{mines::%loop-value%::timer}%s]"
+						else if {mines::%loop-value%::timer} is not set:
+							set {_n} to ""
+						message "- %loop-value% %{_n}%"
+						
+			else if arg-1 = "blocklist":
+				if arg-2 is set:
+					if checkMineContains(arg-2) = true:
+						if {mines::%arg-2%::blocks::*} is not set:
+							message "&cNo blocks avaliable."
+						else if {mines::%arg-2%::blocks::*} is set:
+							message "Mine [%arg-2%]:"
+							message "&aBlocks &f-"
+							loop {mines::%arg-2%::blocks::*}:
+								message "%loop-value%"
+						
+			else if arg-1 = "edit":
+				if arg-2, arg-3 and arg-4 is set:
+					if arg-3 = "addblock":	
+						set {_} to convertTextToItem(arg-4)
+						if {mines::%arg-2%::blocks::*} doesn't contain {_}:
+							message "Added %{_}% to %arg-2%'s block list."
+							add {_} to {mines::%arg-2%::blocks::*}
+							
+					else if arg-3 = "removeblock":
+						set {_} to convertTextToItem(arg-4)	
+						if {mines::%arg-2%::blocks::*} contains {_}:	
+							message "Removed %{_}% from %arg-2%'s block list."
+							remove {_} from {mines::%arg-2%::blocks::*}
+							
+				if arg-3 = "newloc":
+					if {loc1::%player%} and {loc2::%player%} is set:
+						if checkMineContains(arg-2) = true:
+							message "New loc created."
+							delete bound with id arg-2
+							create bound with id arg-2 between {loc1::%player%} and {loc2::%player%}
+														
+							delete {loc1::%player%}
+							delete {loc2::%player%}
+								
+				if arg-3 = "setup":
+					if {mines::%arg-2%::blocks::*} is set:
+						message "Mine setup."
+						setupMine(arg-2)
+						
+function minemanagerhelp(p: player):
+	message " " to {_p}
+	message "&6[Help MineManager]" to {_p}
+	message " " to {_p}
+	message "&fHow to create a mine:" to {_p}
+	message "&6/minemanager &f[pos1/pos2] &7- Sets where the mine will be." to {_p}
+	message "&6/minemanager &f[create] (name) &7- Creates a mine." to {_p}
+	message "&6/minemanager &f[edit] (name) [addblock] (block) &7- Adds a block to the mine." to {_p}
+	message " " to {_p}
+	message "&fHow to start a mine:" to {_p}
+	message "&6/minemanager &f[edit] (name) [setup] &7- Sets the blocks in the mine." to {_p}
+	message "&6/minemanager &f[start] (name) [number] &7- Starts and sets a timer to regenerate the mine." to {_p}
+	message " " to {_p}
+	
+function checkMineContains(mine: text) :: boolean
+	if {mines::*} contains {_mine}:
+		return true
+	else if {mines::*} doesn't contain {_mine}:
+		return false	
+	
+function convertTextToItem(block: text) :: item:
+	replace all "_" with " " in {_block}
+	set {_block} to {_block} parsed as item
+	if {_block} is set:
+		return {_block} 
+
+function setupMine(boundId: text):
+	loop all blocks within bound bound with id {_boundId}:
+		set {_r} to random element out of {mines::%{_boundId}%::blocks::*}
+		set loop-block to {_r}
+	 
+function startMine(boundId: text, timer: number):
+	setupMine({_boundId})
+	set {_t} to {_timer}
+	while {mines::*} contains {_boundId}:
+		if {mines::%{_boundId}%::timer} is not set:
+			exit loop
+		if {_t} <= 0:
+			setupMine({_boundId})
+			set {_t} to {_timer}
+		remove 1 from {_t}
+		wait 1 second
