@@ -1,0 +1,111 @@
+# created 010001000
+# version 1.19+
+# requirements: Skript & Skbee
+
+options:
+	vanish-perm: bukkit.vanish
+	vanish-others: bukkit.vanishothers
+	rejoin-vanish: false
+	
+	# Messages
+	vanish-noperm: &cNo permission.
+	vanished-prefix: &7[V]
+	auto-vanished: &a[Automatically] &fYou have been put into vanish.
+	vanished-msg: You are now vanished.
+	reveal-msg: You are no longer vanished.
+
+command /vanish [<player>]:
+	aliases: /v
+	trigger:
+		if player has permission "{@vanish-perm}":
+			if arg-1 is not set:
+				if {vanish::%player%} is not set:
+					set {vanish::%player%} to player
+					add player to {vanish::others::*}
+					
+					vanish(player)
+					addVanishTeam(player)
+					
+					message "{@vanished-msg}"
+				
+				else if {vanish::%player%} is set:
+					delete {vanish::%player%}
+					remove player from {vanish::others::*}
+					
+					removeVanishTeam(player)
+					reveal(player)
+					
+					message "{@reveal-msg}"
+					
+			if arg-1 is set:
+				if player has permission "{@vanish-others}":
+					if {vanish::%arg-1%} is not set:
+						set {vanish::%arg-1%} to player
+						add arg-1 to {vanish::others::*}
+						
+						vanish(arg-1)
+						addVanishTeam(arg-1)
+						
+						message "{@vanished-msg}" to arg-1
+					
+					else if {vanish::%arg-1%} is set:
+						delete {vanish::%arg-1%}
+						remove arg-1 from {vanish::others::*}
+						
+						removeVanishTeam(arg-1)
+						reveal(arg-1)
+						
+						message "{@reveal-msg}" to arg-1
+				
+		else if player doesn't have permission "{@vanish-perm}":
+			message "{@vanish-noperm}"
+				
+				
+function addVanishTeam(p: player):
+	if team named "vanish" is not set:
+		register new team "vanish"
+	set team suffix of team named "vanish" to " {@vanished-prefix}"
+	add {_p} to team entries of team named "vanish"
+	
+function removeVanishTeam(p: player):
+	remove {_p} from team entries of team named "vanish"
+	
+function vanish(p: player):
+	hide {_p} from all players
+	reveal {_p} to {vanish::others::*}
+	reveal {vanish::others::*} to {_p}
+
+function reveal(p: player):
+	reveal {_p} to all players
+	
+on join:
+	if player has permission "{@vanish-perm}":
+		if {@rejoin-vanish} = true:
+			set join message to ""
+			message "{@auto-vanished}"
+			
+			set {vanish::%player%} to player
+			add player to {vanish::others::*}
+			
+			vanish(player)
+			addVanishTeam(player)
+
+		reveal {_p} to {vanish::others::*}
+		reveal {vanish::others::*} to {_p}
+		
+	else if player doesn't have permission "{@vanish-perm}":
+		loop {vanish::others::*}:
+			if {vanish::%loop-value%} is set:
+				hide loop-value from all players
+				
+on quit:
+	if {vanish::%player%} is set:
+		set quit message to ""
+		delete {vanish::%player%}
+		
+		remove player from {vanish::others::*}
+		removeVanishTeam(player)
+	
+on skript stop:
+	delete {vanish::*}
+	delete {vanish::others::*}
