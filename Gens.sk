@@ -1,0 +1,93 @@
+on skript start:
+	loop {gens::*}:
+		startGen(loop-value, {gens::%loop-value%::itemtype}, {gens::%loop-value%::droptime})
+		
+on tab complete of "/gens":
+	set tab completions for position 1 to "create" and "remove"
+	set {_items::*} to "coal", "gold_ingot", "raw_gold", "iron_ingot", "raw_iron" and "diamond"
+	loop {_items::*}:
+		add loop-value to {_item::*}
+		
+	if tab arg-1 = "remove":
+		if {gens::*} is set:
+			set tab completions for position 2 to {gens::*}
+			
+	if tab arg-1 = "create":
+		set tab completions for position 2 to "##name"
+		set tab completions for position 3 to "##item-type" and {_item::*}
+		set tab completions for position 4 to "##drop-time" 
+
+command /gens [<text>] [<text>] [<text>] [<number>]:
+	trigger:	
+		if player has permission "bukkit.gens":
+			if arg-1 is not set:
+				if {gens::*} is set:
+					message "%nl%Gens list:"
+					loop {gens::*}:
+						message "&aActive: &f%loop-value%"
+					message " "
+				else if {gens::*} is not set:
+					message "There are no current gens available."
+					
+			# /gens create <name> [dropped-item] [drop-time]
+			else if arg-1 = "create":
+				if arg-2 and arg-3 is set:
+					if arg-4 is a number:
+						if arg-2 matches "[A-Za-z]+" or "[A-Za-z]+[0-9]" or "[0-9][A-Za-z]+":
+							if checkGens(player, "create", arg-2) = true:
+								set {_item} to convertTextToItem(arg-3)
+								
+								if {_item} is set:
+									set {gens::%arg-2%} to arg-2
+									set {gens::%arg-2%::location} to location of player
+									set {gens::%arg-2%::droptime} to arg-4
+									set {gens::%arg-2%::itemtype} to {_item}
+								
+									startGen(arg-2, {_item}, arg-4)
+									message "Gen %arg-2% has been created."
+									
+								else if {_item} is not set:
+									message "Item doesn't exist."
+						
+						else if arg-2 doesn't match "[A-Za-z]+" or "[A-Za-z]+[0-9]" or "[0-9][A-Za-z]+":
+							message "&cYou must contain only numbers /or letters."
+					
+			else if arg-1 = "remove":
+				if arg-2 is set:
+					if checkGens(player, "remove", arg-2) = true:
+						delete {gens::%arg-2%}
+						delete {gens::%arg-2%::location}
+						delete {gens::%arg-2%::itemtype}
+						
+						message "Gen %arg-2% has been removed."
+						
+					
+function checkGens(p: player, typecheck: text, gen: text) :: boolean:
+	if {_typecheck} = "create":
+		if {gens::*} doesn't contain {_gen}:
+			return true
+		else if {gens::*} contains {_gen}:
+			message "That gen already exists." to {_p}
+			return false
+	if {_typecheck} = "remove":	
+		if {gens::*} doesn't contain {_gen}:
+			message "That gen doesn't exist." to {_p}
+			return false
+		else if {gens::*} contains {_gen}:
+			return true
+	
+function convertTextToItem(item: text) :: item:
+	replace all "_" with " " in {_item}
+	set {_item} to {_item} parsed as item 
+	return {_item}
+	
+function startGen(gen: text, item: item, drop-time: number):
+	set {_timer} to {_drop-time}
+	while {_timer} is set:
+		if {gens::%{_gen}%::location} is not set:
+			exit loop
+		if {_timer} <= 0:
+			set {_timer} to {_drop-time}
+			drop 1 of {_item} at {gens::%{_gen}%::location} without velocity
+		remove 1 from {_timer}
+		wait 1 second
