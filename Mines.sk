@@ -134,7 +134,7 @@ function minemanagerhelp(p: player):
 	message "&6/minemanager &f[start] (name) [number] &7- Starts and sets a timer to regenerate the mine." to {_p}
 	message " " to {_p}
 	
-function checkMineContains(mine: text) :: boolean
+function checkMineContains(mine: text) :: boolean:
 	if {mines::*} contains {_mine}:
 		return true
 	else if {mines::*} doesn't contain {_mine}:
