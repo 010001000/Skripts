@@ -13,12 +13,12 @@ on tab complete of "/minemanager":
 	if player has permission "bukkit.minemanager":
 		set tab completion of position 1 to "pos1", "pos2", "create", "remove", "list", "blocklist", "edit", "start" and "stop" 
 		if tab arg-1 = "create", "remove", "stop" or "blocklist":
-			set tab completion of position 2 to "##name"
+			set tab completion of position 2 to "##name" and {mines::*}
 		else if tab arg-1 = "edit":
-			set tab completion of position 2 to "##name"
-			set tab completion of position 3 to "addblock", "removeblock", "newloc" and "setup"
+			set tab completion of position 2 to "##name" and {mines::*}
+			set tab completion of position 3 to "addblock", "removeblock", "newloc", "rename" and "setup"
 		else if tab arg-1 = "start":
-			set tab completion of position 2 to "##name"
+			set tab completion of position 2 to "##name" and {mines::*}
 			set tab completion of position 3 to "##number"
 
 command /minemanager [<text>] [<text>] [<text>] [<text>]:
@@ -28,10 +28,11 @@ command /minemanager [<text>] [<text>] [<text>] [<text>]:
 				minemanagerhelp(player)
 			if arg-1 = "pos1":
 				set {loc1::%player%} to player's location
-				message "Pos1 set. x: %x-coord of {loc1::%player%}%, y: %y-coord of {loc1::%player%}%, z: %z-coord of {loc1::%player%}%"
+				getMessagePos(player, "Pos1", {loc1::%player%})
+				
 			else if arg-1 = "pos2":
 				set {loc2::%player%} to player's location
-				message "Pos2 set. x: %x-coord of {loc2::%player%}%, y: %y-coord of {loc2::%player%}%, z: %z-coord of {loc2::%player%}%"
+				getMessagePos(player, "Pos2", {loc2::%player%})
 					
 			else if arg-1 = "start":
 				if arg-2 and arg-3 is set:
@@ -46,12 +47,13 @@ command /minemanager [<text>] [<text>] [<text>] [<text>]:
 			else if arg-1 = "stop":
 				if arg-2 is set:
 					if checkMineContains(arg-2) = true:
-						message "Mine %arg-2% has been stopped."
-						delete {mines::%arg-2%::timer}
+						if {mines::%arg-2%::timer} is set:
+							message "Mine %arg-2% has been stopped."
+							delete {mines::%arg-2%::timer}
 				
 			else if arg-1 = "create":
 				if arg-2 is set:
-					if {loc1::%player%} and {loc2::%player%} is set:
+					if checkManagerLoc(player) = true:
 						if checkMineContains(arg-2) = false:
 							message "Created."
 							add arg-2 to {mines::*}
@@ -89,24 +91,60 @@ command /minemanager [<text>] [<text>] [<text>] [<text>]:
 							message "Mine [%arg-2%]:"
 							message "&aBlocks &f-"
 							loop {mines::%arg-2%::blocks::*}:
-								message "%loop-value%"
+								if {mines::%arg-2%::blocks::%loop-value%::percent} is set:
+									set {_} to "%loop-value% - %% %{mines::%arg-2%::blocks::%loop-value%::percent}%"
+								else if {mines::%arg-2%::blocks::%loop-value%::percent} is not set:
+									set {_} to "%loop-value%" 
+								message {_}
 						
 			else if arg-1 = "edit":
 				if arg-2, arg-3 and arg-4 is set:
 					if arg-3 = "addblock":	
 						set {_} to convertTextToItem(arg-4)
-						if {mines::%arg-2%::blocks::*} doesn't contain {_}:
-							message "Added %{_}% to %arg-2%'s block list."
-							add {_} to {mines::%arg-2%::blocks::*}
+						set {_pc} to convertPercent(arg-4)
+						
+						if {_} is set:
+							if {mines::%arg-2%::blocks::*} doesn't contain {_}:
+								message "Added %{_}% to %arg-2%'s block list."
+								add {_} to {mines::%arg-2%::blocks::*}
+								
+								if {_pc} is set:
+									add {_pc} to {mines::%arg-2%::blocks::%{_}%::percent}
 							
 					else if arg-3 = "removeblock":
 						set {_} to convertTextToItem(arg-4)	
-						if {mines::%arg-2%::blocks::*} contains {_}:	
-							message "Removed %{_}% from %arg-2%'s block list."
-							remove {_} from {mines::%arg-2%::blocks::*}
+						if {_} is set:
+							if {mines::%arg-2%::blocks::*} contains {_}:	
+								message "Removed %{_}% from %arg-2%'s block list."
+								remove {_} from {mines::%arg-2%::blocks::*}
+								delete {mines::%arg-2%::blocks::%{_}%::percent}
+								
+					else if arg-3 = "rename":
+						delete {mines::mine}
+						if checkMineContains(arg-2) = true:
+							message "New name has been set."
 							
+							add arg-4 to {mines::*}
+							set {mines::%arg-4%::timer} to {mines::%arg-2%::timer} 
+							set {mines::%arg-4%::blocks::*} to {mines::%arg-2%::blocks::*}  
+							
+							loop {mines::%arg-2%::blocks::*}:
+								if {mines::%arg-2%::blocks::%loop-value%::percent} is set:
+									set {mines::%arg-4%::blocks::%loop-value%::percent} to {mines::%arg-2%::blocks::%loop-value%::percent}
+							
+							create a copy of bound with id arg-2 with id arg-4
+							
+							remove arg-2 from {mines::*}
+							delete bound with id arg-2
+							delete {mines::%arg-2%::timer} 
+							delete {mines::%arg-2%::blocks::*}
+							
+							setupMine(arg-4)
+							if {mines::%arg-4%::timer} is set:
+								startMine(arg-4, {mines::%arg-4%::timer})
+						
 				if arg-3 = "newloc":
-					if {loc1::%player%} and {loc2::%player%} is set:
+					if checkManagerLoc(player) = true:
 						if checkMineContains(arg-2) = true:
 							message "New loc created."
 							delete bound with id arg-2
@@ -127,12 +165,21 @@ function minemanagerhelp(p: player):
 	message "&fHow to create a mine:" to {_p}
 	message "&6/minemanager &f[pos1/pos2] &7- Sets where the mine will be." to {_p}
 	message "&6/minemanager &f[create] (name) &7- Creates a mine." to {_p}
-	message "&6/minemanager &f[edit] (name) [addblock] (block) &7- Adds a block to the mine." to {_p}
+	message "&6/minemanager &f[edit] (name) [addblock] (block[%%percent]) &7- Adds a block to the mine." to {_p}
 	message " " to {_p}
 	message "&fHow to start a mine:" to {_p}
 	message "&6/minemanager &f[edit] (name) [setup] &7- Sets the blocks in the mine." to {_p}
 	message "&6/minemanager &f[start] (name) [number] &7- Starts and sets a timer to regenerate the mine." to {_p}
 	message " " to {_p}
+	
+function getMessagePos(p: player, type: text, var: location):
+	message "%{_type}% set. x: %x-coord of {_var}%, y: %y-coord of {_var}%, z: %z-coord of {_var}%" to {_p}
+	
+function checkManagerLoc(p: player) :: boolean:
+	if {loc1::%{_p}%} and {loc2::%{_p}%} is set:
+		return true
+	else if {loc1::%{_p}%} or {loc2::%{_p}%} is not set:
+		message "&cPos1 & Pos2 are not set." to {_p}
 	
 function checkMineContains(mine: text) :: boolean:
 	if {mines::*} contains {_mine}:
@@ -142,14 +189,32 @@ function checkMineContains(mine: text) :: boolean:
 	
 function convertTextToItem(block: text) :: item:
 	replace all "_" with " " in {_block}
+	replace all "%%","0","1","2","3","4","5","6","7","8" or "9" with "" in {_block}
 	set {_block} to {_block} parsed as item
-	if {_block} is set:
-		return {_block} 
+	return {_block} 
+		
+function convertPercent(block: text) :: number:
+	set {_percent::*} to {_block}
+	loop {_percent::*}:
+		set {_percent::*} to loop-value split at "%%"
+		set {_} to {_percent::2} parsed as number
+	return {_}
 
-function setupMine(boundId: text):
+function setupMine(boundId: text):		
 	loop all blocks within bound bound with id {_boundId}:
-		set {_r} to random element out of {mines::%{_boundId}%::blocks::*}
-		set loop-block to {_r}
+		set {_b} to random element out of {mines::%{_boundId}%::blocks::*}
+		if {mines::%{_boundId}%::blocks::%{_b}%::percent} is set:
+			chance of {mines::%{_boundId}%::blocks::%{_b}%::percent}%:
+				set loop-block to {_b}	
+				continue
+			loop {mines::%{_boundId}%::blocks::*}:
+				if {mines::%{_boundId}%::blocks::%loop-value-2%::percent} is not set:
+					set loop-block to loop-value-2	
+					continue
+		else if {mines::%{_boundId}%::blocks::%{_b}%::percent} is not set:
+			set loop-block to {_b}
+			continue
+		
 	 
 function startMine(boundId: text, timer: number):
 	setupMine({_boundId})
