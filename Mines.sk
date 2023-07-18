@@ -227,3 +227,11 @@ function startMine(boundId: text, timer: number):
 			set {_t} to {_timer}
 		remove 1 from {_t}
 		wait 1 second
+		
+on damage:
+	set {_b::*} to all bounds
+	loop {_b::*}:
+		if victim is within loop-value:
+			if bound id of loop-value contains "mine" or "m":
+				teleport victim to victim's location ~ vector 0,3,0
+				heal victim by 10
