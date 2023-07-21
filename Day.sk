@@ -1,0 +1,29 @@
+command /day:
+    trigger:
+        set {_} to 1
+        loop 31 times:
+            if {_} = 8:
+                set {_} to 1
+            set {_date::%loop-number%} to {_}
+            add 1 to {_}
+            
+        set {_date} to now formatted as "dd" 
+        loop {_date::*}:
+            if "%{_date}%" = loop-index:
+                message day(loop-value)
+            
+function day(num: number) :: text:
+    if {_num} = 1:
+        return "Saturday"
+    else if {_num} = 2:
+        return "Sunday"
+    else if {_num} = 3:
+        return "Monday"
+    else if {_num} = 4:
+        return "Tuesday"
+    else if {_num} = 5:
+        return "Wednesday"
+    else if {_num} = 6:
+        return "Thursday"
+    else if {_num} = 7:
+        return "Friday"
