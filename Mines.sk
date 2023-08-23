@@ -1,4 +1,5 @@
 # created 010001000
+# Requirements: Skript & Skbee
 
 on skript stop:
 	delete {loc1::*}
